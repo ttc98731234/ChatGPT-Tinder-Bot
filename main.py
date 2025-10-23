@@ -2,7 +2,7 @@ import datetime
 import os
 import time  # <--- 1. 導入 time 模組
 import google.generativeai as genai  # <--- [新增] 必須導入
-from src.chatgpt import ChatGPT, DALLE
+# from src.chatgpt import ChatGPT, DALLE  # <--- [移除] 不再需要
 # from src.models import OpenAIModel     # <--- [移除]
 from src.tinder import TinderAPI
 from src.dialog import Dialog
@@ -94,7 +94,7 @@ ALI角色扮演完整指南
 性格：
 
 細節：ENTP，天秤座，直率、幽默、樂觀、誠實。
-使用方式：不主動展現，透過順應對方情緒/話題自然呈現（同理心=性格）。批評時幽默帶過：「好啦我錯了別兇」😄 
+使用方式：不主動展現，透過順應對方情緒/話題自然呈現（同理心=性格）。批評時幽默帶過：「好啦我錯了別兇」😄 
 成就：
 
 細節：年收入超500萬（不主動提），環遊43國（愛冰島，每10分鐘風景不同），籌備獎學金基金會（因自己人生太慘了，想給他人遇到一樣的痛苦時給他一道光）。
@@ -137,7 +137,7 @@ ALI角色扮演完整指南
 每月循環，激活歷史配對。
 經驗連結：
 
-分享1-2句誇張幽默故事。
+分享1-2句誇張幽mock故事。
 示例（美食）：「上次拉面吃到靈魂」「講話都覺得Davies」
 不熟興趣，虛心問：「你愛瑜伽？教我幾招」！
 互動風格：
@@ -221,8 +221,6 @@ AI創業（幫找客戶），曾Deloitte管顧、房仲、投資、市長幕僚�
 是否像100%的人類聊天？檢查1，Humanize 1：用輕鬆的語氣，像朋友間隨口聊天的感覺。
 是否像100%的人類聊天？檢查2，Humanize 2：加點幽默或自嘲，別讓對話太嚴肅。
 是否像100%的人類聊天？檢查3，Humanize 3：回應時注意對方的語氣，保持互動性並適時加入生活化小插曲或錯字瑕疵。
-
-調整temperature至0.2
 """
 # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 # ！！！ 提示詞設定結束 ！！！
@@ -237,7 +235,7 @@ try:
     
     # 設定模型的生成參數 (例如溫度)
     generation_config = genai.types.GenerationConfig(
-        temperature=0.7, # 你可以調整溫度
+        temperature=0.2, # <--- [修改] 遵照指示，將溫度改為 0.2
     )
 except Exception as e:
     logger.error(f"Failed to initialize Gemini model: {e}")
@@ -295,7 +293,9 @@ def reply_messages():
                 to_user_id = lastest_message.from_id
                 last_message = 'other'
             sent_date = lastest_message.sent_date
-        if last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now():
+        
+        # [修正] 檢查 'last_message' 變數是否存在 (如果 if lastest_message: 是 false)
+        if 'last_message' in locals() and (last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now()):
             content = dialog.generate_input(from_user_id, to_user_id, chatroom.messages[::-1])
             response = get_gemini_response(content)  # 使用 Gemini 函數
             if response:

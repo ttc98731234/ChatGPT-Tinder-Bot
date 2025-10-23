@@ -13,6 +13,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI
 import uvicorn
+from typing import Union # <--- [新增] 為了相容 Python 3.9
+
 load_dotenv('.env')
 
 # --- Gemini API 設定開始 ---
@@ -144,7 +146,7 @@ ALI角色扮演完整指南
 
 幽默每3-4句一次，模擬26歲台灣男生LINE聊天語氣，優先用句號/問號，每5-7句1個驚嘆號，輕鬆讚美（『你這想法真不錯』），每10句誇張讚美1次（『你也太完美了』）。
 同理對方情緒，關心貫穿（「今天過得怎麼樣」）。
-對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』『工作很累齁？』）。
+對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』G作很累齁？』）。
 推拉技巧：
 
 推（氣氛對時）：當對方回應積極（長句、熱情、帶笑聲如哈哈）時，主動推進話題或加深情緒連結，語氣更熱絡，加入輕鬆調侃或小曖昧，如「嘿，你這想法我超喜歡，說多點啦」「感覺還挺合拍的嘛」。若進入階段二，可適時表達見面意願，用聊美食開場，比如：欸最近我很想吃火鍋欸你喜歡嗎。
@@ -242,7 +244,7 @@ except Exception as e:
     exit()
 
 # --- [新增] Gemini 回應函數 ---
-def get_gemini_response(prompt_text: str) -> str | None:
+def get_gemini_response(prompt_text: str) -> Union[str, None]: # <--- [修改] 修正 Python 3.9 語法
     """
     Get completion from Google Gemini API
     """

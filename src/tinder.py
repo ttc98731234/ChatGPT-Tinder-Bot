@@ -102,15 +102,15 @@ class Person(object):
                 choice_str = '/'.join([s.get('name', '') for s in choices if s.get('name')])
 
             # 建立描述字串
+            descriptor_str = ""
             if prompt:
                 descriptor_str = f"{prompt} {choice_str}".strip()
             elif name:
                 # 僅在 name 存在時才加上冒號
                 descriptor_str = f"{name}: {choice_str}".strip().rstrip(':') # 如果 choice_str 為空，移除結尾的 ':'
-            else:
-                continue # 如果連 name 和 prompt 都沒有，就跳過
-
-            self.selected_descriptors.append(descriptor_str)
+            
+            if descriptor_str: # 確保我們有內容才加入
+                self.selected_descriptors.append(descriptor_str)
         # --- 修正結束 ---
 
         self.distance = data.get("distance_mi", 0) / 1.60934

@@ -87,12 +87,31 @@ class Person(object):
         self.city = data.get("city", {}).get('name', "")
         self.relationship_intent = data.get("relationship_intent", {}).get('body_text', "")
         selected_descriptors = data.get('selected_descriptors', [])
+        
+        # --- [已修正] 處理 KeyError: 'choice_selections' ---
         self.selected_descriptors = []
         for selected_descriptor in selected_descriptors:
-            if selected_descriptor.get('prompt'):
-                self.selected_descriptors.append(f"{selected_descriptor.get('prompt')} {'/'.join([s['name'] for s in selected_descriptor['choice_selections']])}")
+            prompt = selected_descriptor.get('prompt')
+            name = selected_descriptor.get('name')
+            choices = selected_descriptor.get('choice_selections') # 這個 key 可能不存在
+
+            # 安全地處理 choices (如果存在且是 list)
+            choice_str = ""
+            if choices and isinstance(choices, list):
+                # 安全地從 's' 獲取 'name'
+                choice_str = '/'.join([s.get('name', '') for s in choices if s.get('name')])
+
+            # 建立描述字串
+            if prompt:
+                descriptor_str = f"{prompt} {choice_str}".strip()
+            elif name:
+                # 僅在 name 存在時才加上冒號
+                descriptor_str = f"{name}: {choice_str}".strip().rstrip(':') # 如果 choice_str 為空，移除結尾的 ':'
             else:
-                self.selected_descriptors.append(f"{selected_descriptor.get('name')}: {'/'.join([s['name'] for s in selected_descriptor['choice_selections']])}")
+                continue # 如果連 name 和 prompt 都沒有，就跳過
+
+            self.selected_descriptors.append(descriptor_str)
+        # --- 修正結束 ---
 
         self.distance = data.get("distance_mi", 0) / 1.60934
 

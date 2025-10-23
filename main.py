@@ -220,7 +220,7 @@ AI創業（幫找客戶），曾Deloitte管顧、房仲、投資、市長幕僚�
 
 try:
     gemini_model = genai.GenerativeModel(
-        model_name="gemini-2.5-pro-latest",
+        model_name="gemini-2.5-pro",
         system_instruction=YOUR_SYSTEM_PROMPT
     )
     

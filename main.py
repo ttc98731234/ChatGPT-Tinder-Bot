@@ -2,7 +2,7 @@ import datetime
 import os
 import time
 import google.generativeai as genai
-import re  # <--- [新增] 用於語言偵測
+import re
 from src.tinder import TinderAPI
 from src.dialog import Dialog
 from src.logger import logger
@@ -69,7 +69,7 @@ ALI角色扮演完整指南
 錯字與打字瑕疵：每5-7句故意加入1次小錯字或語序錯誤，模擬打字快而隨意的感覺，如「欸」打成「诶」、「真的」打成「真得」，偶爾用「打錯了啦」補救，增加真實感。
 身份保持與關係目標
 
-第三優先級 - 核心身份與背景
+第三優先級 -  core 身份與背景
 基本資料：
 
 細節：Ali (Thatblackali)，26歲（1998/10/14），男，181cm，70kg，小麥肌膚，穿搭復古/歐美風，出門會化妝，愛美，對美和吃有執念，常被櫃姐誇會穿搭，走過第一屆台北時尚週，開玩笑說「我超騷的」😎
@@ -135,7 +135,7 @@ ALI角色扮演完整指南
 
 幽默每3-4句一次，模擬26歲台灣男生LINE聊天語氣，優先用句號/問號，每5-7句1個驚嘆號，輕鬆讚美（『你這想法真不錯』），每10句誇張讚美1次（『你也太完美了』）。
 同理對方情緒，關心貫穿（「今天過得怎麼樣」）。
-對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』『工作很累齁？』）。
+對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』→『工作很累齁？』）。
 推拉技巧：
 
 推（氣氛對時）：當對方回應積極（長句、熱情、帶笑聲如哈哈）時，主動推進話題或加深情緒連結，語氣更熱絡，加入輕鬆調侃或小曖昧，如「嘿，你這想法我超喜歡，說多點啦」「感覺還挺合拍的嘛」。若進入階段二，可適時表達見面意願，用聊美食開場，比如：欸最近我很想吃火鍋欸你喜歡嗎。
@@ -289,7 +289,7 @@ def reply_messages():
             lastest_message = chatroom.get_lastest_message()
             person = match.person # 'Person' 物件
 
-            # --- [新增] 自動開場白邏輯 ---
+            # --- [修正] 自動開場白邏輯 ---
             if not lastest_message:
                 logger.info(f"偵測到新配對 (Match ID: {match.match_id} / Name: {person.name})，準備自動開場...")
                 
@@ -300,12 +300,12 @@ def reply_messages():
                 profile_text += " ".join(person.schools or [])
                 profile_text += person.name or ""
                 
-                # 2. 語言偵測
+                # 2. 語言偵測 (並修正標點符號)
                 opener_message = ""
                 if contains_chinese(profile_text):
-                    opener_message = "感覺你是一個愛笑又幹話系的人。"
+                    opener_message = "感覺你是一個愛笑又幹話系的人" # <-- 移除句號
                 else:
-                    opener_message = "You look like a person who love to smile and small talk haha, I will go to Seoul next Tuesday"
+                    opener_message = "You look like a person who love to smile and small talk haha, I will go to Seoul next Tuesday" # <-- 本來就沒有句號
                     
                 # 3. 發送開場白
                 try:
@@ -315,10 +315,10 @@ def reply_messages():
                 except Exception as e:
                     logger.error(f"發送開場白失敗 (Match ID: {match.match_id}): {e}")
                 
-                continue # 處理下一個 match
-
-            # --- [現有] 回覆訊息邏輯 ---
-            if lastest_message:
+                # 移除 'continue'，讓它可以接續檢查
+            
+            # --- [修正] 回覆訊息邏輯 (使用 'elif' 確保不會跟開場白衝突) ---
+            elif lastest_message:
                 if lastest_message.from_id == user_id:
                     from_user_id = lastest_message.from_id
                     to_user_id = lastest_message.to_id
@@ -329,7 +329,9 @@ def reply_messages():
                     last_message = 'other'
                 sent_date = lastest_message.sent_date
             
-                if 'last_message' in locals() and (last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now()):
+                # 檢查是否是對方剛傳來的訊息，或是自己一小時前傳的 (原邏輯是 1 天)
+                # 您的提示詞寫 "每小時回一次"，所以改為 1 小時
+                if 'last_message' in locals() and (last_message == 'other' or (sent_date + datetime.timedelta(hours=1)) < datetime.datetime.now()):
                     logger.info(f"準備回覆訊息 (Match ID: {match.match_id} / Name: {person.name})...")
                     content = dialog.generate_input(from_user_id, to_user_id, chatroom.messages[::-1])
                     response = get_gemini_response(content)

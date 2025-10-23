@@ -1,5 +1,4 @@
 google-generativeai==0.7.1
-tinder-api-sms==0.1.5
 opencc-python-reimplemented==1.1.7
 fastapi==0.111.0
 uvicorn[standard]==0.29.0

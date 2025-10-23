@@ -39,7 +39,7 @@ try:
         # 因此我們不在這裡設定 system_instruction
     )
     generation_config = genai.types.GenerationConfig(
-        temperature=0.7, # 你可以調整溫度
+        temperature=1.0, # 你可以調整溫度
     )
 except Exception as e:
     logger.error(f"Failed to initialize Gemini model: {e}")

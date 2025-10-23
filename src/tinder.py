@@ -159,3 +159,4 @@ class Profile(Person):
 
         self.max_distance = data["user"]["distance_filter"]
         self.gender_filter = ["Male", "Female"][data["user"]["gender_filter"]]
+

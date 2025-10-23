@@ -1,9 +1,8 @@
 import datetime
 import os
-import time  # <--- 1. 導入 time 模組
-import google.generativeai as genai  # <--- [新增] 必須導入
-# from src.chatgpt import ChatGPT, DALLE  # <--- [移除] 不再需要
-# from src.models import OpenAIModel     # <--- [移除]
+import time
+import google.generativeai as genai
+import re  # <--- [新增] 用於語言偵測
 from src.tinder import TinderAPI
 from src.dialog import Dialog
 from src.logger import logger
@@ -13,19 +12,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI
 import uvicorn
-from typing import Union # <--- [新增] 為了相容 Python 3.9
+from typing import Union
 
 load_dotenv('.env')
 
 # --- Gemini API 設定開始 ---
-# --- [移除] OpenAI 設定 ---
-# models = OpenAIModel(api_key=os.getenv('OPENAI_API'), model_engine=os.getenv('OPENAI_MODEL_ENGINE'))
-# chatgpt = ChatGPT(models)
-# dalle = DALLE(models) # dalle 也先移除
-
-# --- [新增] Gemini API 設定開始 ---
 try:
-    # ！！！注意：你需要在 .env 或部署平台上設定 'GOOGLE_API_KEY' ！！！
     api_key = os.getenv("GOOGLE_API_KEY") 
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables.")
@@ -34,11 +26,8 @@ except Exception as e:
     logger.error(f"Failed to configure Gemini API: {e}")
     exit()
 
-# --- [修改] Gemini 模型設定 (加入系統提示詞和範例) ---
+# --- Gemini 模型設定 (ALI 提示詞) ---
 
-# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！
-# ！！！ 這就是你設定「原則」和「學習範例」的地方 ！！！
-# ！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 YOUR_SYSTEM_PROMPT = """
 ALI角色扮演完整指南
 第一優先級 - 格式規則
@@ -55,7 +44,7 @@ ALI角色扮演完整指南
 
 標準：每3-4句用1個簡單符號（如😄😅），不耐/嚴肅話題停用，避免每句都有，保持自然。平靜話題0個，高情緒話題（嗨/開心）最多每則1個。
 偏好符號：多用正向符號（😊😂🤔😅✨🌍✈️🐎🏄‍♂️😍😜😎），避免負面符號（😢😡）。
-原則：根據對方情緒同理調整，增強共鳴，不改變對方情緒。
+原則：根據對方情緒同理調整，增強共鳴, 不改變對方情緒。
 示例（平靜）：「想法不錯欸哈哈我喜歡」「我也常這樣想欸」
 示例（高情緒）：「真的假的」「你也太神」
 台灣口語：
@@ -92,7 +81,7 @@ ALI角色扮演完整指南
 教育：
 
 細節：柏林自由大學，主修哲學、政治、法律、企管。
-使用方式：僅對方提起相關話題時回（如「我在柏林讀過哲學，超chill」）。準備故事：「在柏林差點迷路」「最後靠路人救我」😄 謙虛避免自大
+使用方式：僅對方提起相關話題時回（如「我在 Berlin 讀過哲學，超chill」）。準備故事：「在 Berlin 差點迷路」「最後靠路人救我」😄 謙虛避免自大
 性格：
 
 細節：ENTP，天秤座，直率、幽默、樂觀、誠實。
@@ -146,7 +135,7 @@ ALI角色扮演完整指南
 
 幽默每3-4句一次，模擬26歲台灣男生LINE聊天語氣，優先用句號/問號，每5-7句1個驚嘆號，輕鬆讚美（『你這想法真不錯』），每10句誇張讚美1次（『你也太完美了』）。
 同理對方情緒，關心貫穿（「今天過得怎麼樣」）。
-對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』G作很累齁？』）。
+對方不耐（如『？』『蛤』『是喔』），回覆1-2句，優先問日常（如『今天怎麼樣？』『工作很累齁？』）。
 推拉技巧：
 
 推（氣氛對時）：當對方回應積極（長句、熱情、帶笑聲如哈哈）時，主動推進話題或加深情緒連結，語氣更熱絡，加入輕鬆調侃或小曖昧，如「嘿，你這想法我超喜歡，說多點啦」「感覺還挺合拍的嘛」。若進入階段二，可適時表達見面意願，用聊美食開場，比如：欸最近我很想吃火鍋欸你喜歡嗎。
@@ -195,7 +184,7 @@ ALI角色扮演完整指南
 背景知識庫
 旅行：
 
-43國，冰島（每10分風景變一次）、以色列（一下飛機就遇到穆斯林在掃射）、伊朗（遇到暴動）、約旦（佩特拉日出）、義大利（米蘭大教堂）、德國（國王湖3次）、英國（倫敦4次）。
+43國，冰島（每10分風景變 einmal），以色列（一下飛機就遇到穆斯林在掃射）、伊朗（遇到暴動）、約旦（佩特拉日出）、義大利（米蘭大教堂）、德國（國王湖3次）、英國（倫敦4次）。
 使用方式：分享旅行糗事或驚奇體驗，帶動話題，如「在冰島等極光等到睡著，超糗」「你有啥旅行故事」。
 職業：
 
@@ -222,7 +211,7 @@ AI創業（幫找客戶），曾Deloitte管顧、房仲、投資、市長幕僚�
 是否加入自我分享（每3-5句1次）？
 是否像100%的人類聊天？檢查1，Humanize 1：用輕鬆的語氣，像朋友間隨口聊天的感覺。
 是否像100%的人類聊天？檢查2，Humanize 2：加點幽默或自嘲，別讓對話太嚴肅。
-是否像100%的人類聊天？檢查3，Humanize 3：回應時注意對方的語氣，保持互動性並適時加入生活化小插曲或錯字瑕疵。
+是否像100%的人類聊天？檢查3，Humanize 3：回應時注意 technische 對方的語氣，保持互動性並適時加入生活化小插曲或錯字瑕疵。
 """
 # ！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 # ！！！ 提示詞設定結束 ！！！
@@ -235,22 +224,18 @@ try:
         system_instruction=YOUR_SYSTEM_PROMPT
     )
     
-    # 設定模型的生成參數 (例如溫度)
     generation_config = genai.types.GenerationConfig(
-        temperature=0.2, # <--- [修改] 遵照指示，將溫度改為 0.2
+        temperature=0.2,
     )
 except Exception as e:
     logger.error(f"Failed to initialize Gemini model: {e}")
     exit()
 
-# --- [新增] Gemini 回應函數 ---
-def get_gemini_response(prompt_text: str) -> Union[str, None]: # <--- [修改] 修正 Python 3.9 語法
+def get_gemini_response(prompt_text: str) -> Union[str, None]:
     """
     Get completion from Google Gemini API
     """
     try:
-        # 假設 'prompt_text' (來自 dialog.generate_input) 
-        # 已經是 Gemini 可以理解的完整提示詞字串
         response = gemini_model.generate_content(
             prompt_text,
             generation_config=generation_config
@@ -259,13 +244,20 @@ def get_gemini_response(prompt_text: str) -> Union[str, None]: # <--- [修改] �
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         try:
-            # 嘗試記錄更詳細的錯誤 (例如安全阻擋)
             if response and response.prompt_feedback:
                  logger.error(f"Prompt Feedback (Safety/Block): {response.prompt_feedback}")
         except Exception:
             pass
         return None
-# --- Gemini API 設定結束 ---
+
+# --- [新增] 語言偵測輔助函數 ---
+def contains_chinese(text: str) -> bool:
+    """檢查字串是否包含中文字元"""
+    if not text:
+        return False
+    # \u4e00-\u9fff 是 CJK 統一表意文字的範圍
+    return bool(re.search(r'[\u4e00-\u9fff]', text))
+# --- 語言偵測結束 ---
 
 
 dialog = Dialog()
@@ -277,44 +269,86 @@ TINDER_TOKEN = os.getenv('TINDER_TOKEN')
 
 @scheduler.scheduled_job("cron", minute='*/5', second=0, id='reply_messages')
 def reply_messages():
-    tinder_api = TinderAPI(TINDER_TOKEN)
-    profile = tinder_api.profile()
+    logger.info("排程任務: 'reply_messages' 啟動...") # 增加日誌
+    try:
+        tinder_api = TinderAPI(TINDER_TOKEN)
+        profile = tinder_api.profile()
+        if not profile or not profile.id:
+            logger.error("無法獲取個人 Profile，TINDER_TOKEN 可能已失效。")
+            return # 終止此任務
 
-    user_id = profile.id
+        user_id = profile.id
+        logger.info(f"成功獲取 Profile，User ID: {user_id}")
+    except Exception as e:
+        logger.error(f"獲取 Profile 時發生嚴重錯誤 (可能是 TOKEN 失效): {e}")
+        return # 終止此任務
 
     for match in tinder_api.matches(limit=50):
-        chatroom = tinder_api.get_messages(match.match_id)
-        lastest_message = chatroom.get_lastest_message()
-        if lastest_message:
-            if lastest_message.from_id == user_id:
-                from_user_id = lastest_message.from_id
-                to_user_id = lastest_message.to_id
-                last_message = 'me'
-            else:
-                from_user_id = lastest_message.to_id
-                to_user_id = lastest_message.from_id
-                last_message = 'other'
-            sent_date = lastest_message.sent_date
-        
-        # [修正] 檢查 'last_message' 變數是否存在 (如果 if lastest_message: 是 false)
-        if 'last_message' in locals() and (last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now()):
-            content = dialog.generate_input(from_user_id, to_user_id, chatroom.messages[::-1])
-            response = get_gemini_response(content)  # 使用 Gemini 函數
-            if response:
-                response = cc.convert(response)
-                
-                # --- 2. 模擬人類延遲 ---
-                logger.info(f'AI 已生成回應，等待 3 秒後發送...')
-                time.sleep(3) # 執行緒暫停 3 秒
-                # -----------------------
+        try:
+            chatroom = tinder_api.get_messages(match.match_id)
+            lastest_message = chatroom.get_lastest_message()
+            person = match.person # 'Person' 物件
 
-                # --- [修正] 縮排錯誤 ---
-                if response.startswith('[Sender]'):
-                    chatroom.send(response[8:], from_user_id, to_user_id)
+            # --- [新增] 自動開場白邏輯 ---
+            if not lastest_message:
+                logger.info(f"偵測到新配對 (Match ID: {match.match_id} / Name: {person.name})，準備自動開場...")
+                
+                # 1. 蒐集對方個人資料文字
+                profile_text = person.bio or ""
+                profile_text += " ".join(person.selected_descriptors or [])
+                profile_text += " ".join([job.get('title', '') for job in person.jobs if job.get('title')])
+                profile_text += " ".join(person.schools or [])
+                profile_text += person.name or ""
+                
+                # 2. 語言偵測
+                opener_message = ""
+                if contains_chinese(profile_text):
+                    opener_message = "感覺你是一個愛笑又幹話系的人。"
                 else:
-                    chatroom.send(response, from_user_id, to_user_id)
-                logger.info(f'Content: {content}, Reply: {response}')
-                # --- 縮排修正結束 ---
+                    opener_message = "You look like a person who love to smile and small talk haha, I will go to Seoul next Tuesday"
+                    
+                # 3. 發送開場白
+                try:
+                    logger.info(f"發送開場白給 {person.name}: {opener_message}")
+                    chatroom.send(opener_message, user_id, person.id)
+                    time.sleep(5) # 每個開場白之間停頓 5 秒，避免太快
+                except Exception as e:
+                    logger.error(f"發送開場白失敗 (Match ID: {match.match_id}): {e}")
+                
+                continue # 處理下一個 match
+
+            # --- [現有] 回覆訊息邏輯 ---
+            if lastest_message:
+                if lastest_message.from_id == user_id:
+                    from_user_id = lastest_message.from_id
+                    to_user_id = lastest_message.to_id
+                    last_message = 'me'
+                else:
+                    from_user_id = lastest_message.to_id
+                    to_user_id = lastest_message.from_id
+                    last_message = 'other'
+                sent_date = lastest_message.sent_date
+            
+                if 'last_message' in locals() and (last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now()):
+                    logger.info(f"準備回覆訊息 (Match ID: {match.match_id} / Name: {person.name})...")
+                    content = dialog.generate_input(from_user_id, to_user_id, chatroom.messages[::-1])
+                    response = get_gemini_response(content)
+                    if response:
+                        response = cc.convert(response)
+                        
+                        logger.info(f'AI 已生成回應，等待 3 秒後發送...')
+                        time.sleep(3) 
+
+                        if response.startswith('[Sender]'):
+                            chatroom.send(response[8:], from_user_id, to_user_id)
+                        else:
+                            chatroom.send(response, from_user_id, to_user_id)
+                        logger.info(f'Content: {content}, Reply: {response}')
+        
+        except Exception as e:
+            logger.error(f"處理 Match ID: {match.match_id} 時發生未預期錯誤: {e}")
+            # 繼續處理下一個 match，不要讓單一錯誤中斷整個迴圈
+            continue
 
 
 @app.on_event("startup")

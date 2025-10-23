@@ -1,5 +1,22 @@
+Gemini
+
 google-generativeai==0.7.1
+
+核心依賴 (推斷自你的 main.py 和原始 repo)
+
+tinder-api-sms==0.1.5
+opencc-python-reimplemented==1.1.7
+
+伺服器與排程
+
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+APScheduler==3.7.0
+
+環境變數
+
 python-dotenv==0.21.1
-schedule==1.2.1
-tinder_api_sms==0.1.5
+
+requests 通常是 tinder-api-sms 的依賴項，但如果需要可手動加入
+
 requests==2.28.2
